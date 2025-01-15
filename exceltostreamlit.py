@@ -1,67 +1,159 @@
+import sqlite3
 import streamlit as st
 import pandas as pd
-import sqlite3
 
-st.title("Excel File Viewer with SQLite Query Interface")
+# Initialize SQLite database
+def init_db():
+    conn = sqlite3.connect("university_data.db")
+    cursor = conn.cursor()
+    cursor.execute(''' 
+        CREATE TABLE IF NOT EXISTS university_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            university TEXT,
+            duration TEXT,
+            fee TEXT,
+            themes TEXT,
+            comments TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-# Tabs for better organization
-tab1, tab2 = st.tabs(["📄 Upload Excel File", "🛠️ SQL Query Interface"])
+# Insert data into database
+def insert_data(university, duration, fee, themes, comments):
+    try:
+        conn = sqlite3.connect("university_data.db")
+        cursor = conn.cursor()
+        cursor.execute(''' 
+            INSERT INTO university_data (university, duration, fee, themes, comments)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (university, duration, fee, themes, comments))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"Error inserting record: {str(e)}")
+        return False
 
-# Tab 1: File Upload
-with tab1:
-    st.subheader("Upload Your Excel File")
-    uploaded_file = st.file_uploader("Upload your Excel file (.xlsx)", type=["xlsx"])
+# Query data from database
+def query_data(filters):
+    try:
+        conn = sqlite3.connect("university_data.db")
+        query = "SELECT * FROM university_data WHERE 1=1"
 
-    if uploaded_file:
-        try:
-            # Read Excel file
-            df = pd.read_excel(uploaded_file, engine="openpyxl")
-            st.success("File uploaded and read successfully!")
-            st.write("Preview of your data:")
+        # Apply filters dynamically
+        for key, value in filters.items():
+            if value:
+                if key == "themes":
+                    query += f" AND {key} LIKE '%{value}%'"
+                else:
+                    query += f" AND {key} = '{value}'"
 
-            # Display dataframe with adjusted width
-            st.dataframe(df, use_container_width=True)
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Error querying data: {str(e)}")
+        return pd.DataFrame()  # return empty dataframe on error
 
-            # Save DataFrame to SQLite in-memory database
-            conn = sqlite3.connect(":memory:")  # In-memory database
-            df.to_sql("uploaded_data", conn, index=False, if_exists="replace")
+# Run a custom SQL query
+def run_sql_query(query):
+    try:
+        conn = sqlite3.connect("university_data.db")
+        # Return the result as a pandas DataFrame
+        if query.strip().lower().startswith('select'):
+            df = pd.read_sql_query(query, conn)
+        else:
+            conn.execute(query)
+            conn.commit()
+            df = pd.DataFrame()  # For non-SELECT queries, no result set is returned
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Error running SQL query: {str(e)}")
+        return pd.DataFrame()  # return empty dataframe on error
 
-            st.success("Data loaded into an SQLite database!")
+# Reset the auto-increment counter
+def reset_auto_increment():
+    try:
+        conn = sqlite3.connect("university_data.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='university_data';")
+        conn.commit()
+        conn.close()
+        st.success("Auto-increment counter reset successfully!")
+    except Exception as e:
+        st.error(f"Error resetting auto-increment counter: {str(e)}")
 
-            # Store the DataFrame and connection for later use
-            st.session_state.df = df
-            st.session_state.conn = conn
+# Main app
+def main():
+    st.title("Data Schools Database")
 
-        except ImportError as e:
-            st.error("The library 'openpyxl' is required to read Excel files. Please install it by running `pip install openpyxl`.")
-        except Exception as e:
-            st.error(f"An error occurred while reading the file: {e}")
+    init_db()
 
-# Tab 2: SQL Query Interface
-with tab2:
-    st.subheader("Run SQL Query on Your Data")
+    # Tabs for data entry, querying data, and SQL query
+    tab1, tab2, tab3 = st.tabs(["Add Data", "Query Data", "SQL Query"])
 
-    # Check if data has been uploaded successfully
-    if 'df' in st.session_state and not st.session_state.df.empty:
-        # SQL Query Input
-        query = st.text_area("Enter your SQL query:", "SELECT * FROM uploaded_data LIMIT 10")
+    # Add Data Tab
+    with tab1:
+        st.header("Add Data")
+        university = st.text_input("University Name", placeholder="Enter the name of the university")
+        duration = st.text_input("Duration", placeholder="Enter the course duration (e.g., 4 years)")
+        fee = st.text_input("Fee", placeholder="Enter the fee (e.g., $20,000)")
+        themes = st.text_area("Themes (comma-separated)", placeholder="Enter themes related to the course")
+        comments = st.text_area("Comments", placeholder="Any additional comments")
+
+        if st.button("Add Record"):
+            if university and duration and fee and themes and comments:
+                if insert_data(university, duration, fee, themes, comments):
+                    st.success("Record added successfully!")
+                else:
+                    st.error("Failed to add record.")
+            else:
+                st.error("Please fill in all fields.")
+
+    # Query Data Tab
+    with tab2:
+        st.header("Query Data")
+        st.write("Use the filters below to search the database:")
+
+        filter_university = st.text_input("Filter by University")
+        filter_duration = st.text_input("Filter by Duration")
+        filter_fee = st.text_input("Filter by Fee")
+        filter_themes = st.text_input("Filter by Themes (keyword)")
+
+        filters = {
+            "university": filter_university,
+            "duration": filter_duration,
+            "fee": filter_fee,
+            "themes": filter_themes,
+        }
+
+        if st.button("Search"):
+            result_df = query_data(filters)
+            if not result_df.empty:
+                st.dataframe(result_df)
+            else:
+                st.write("No records found.")
+
+    # SQL Query Tab
+    with tab3:
+        st.header("Run Custom SQL Query")
+        query = st.text_area("Enter SQL Query (e.g., SELECT * FROM university_data)")
 
         if st.button("Run Query"):
-            try:
-                result_df = pd.read_sql_query(query, st.session_state.conn)
-                st.write("Query Results:")
+            if query.strip():
+                result_df = run_sql_query(query)
+                if not result_df.empty:
+                    st.dataframe(result_df)
+                else:
+                    st.write("No data returned or error in query.")
+            else:
+                st.error("Please enter a SQL query.")
 
-                # Display query results with adjusted width
-                st.dataframe(result_df, use_container_width=True)
+        # Reset Auto-Increment Counter Button
+        if st.button("Reset Auto-Increment Counter"):
+           reset_auto_increment()
 
-                # Option to download query results
-                st.download_button(
-                    label="Download Query Results as CSV",
-                    data=result_df.to_csv(index=False),
-                    file_name="query_results.csv",
-                    mime="text/csv",
-                )
-            except Exception as e:
-                st.error(f"Error executing query: {e}")
-    else:
-        st.warning("Please upload a file in the '📄 Upload Excel File' tab first.")
+if __name__ == "__main__":
+    main()
