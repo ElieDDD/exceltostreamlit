@@ -1,18 +1,10 @@
 import streamlit as st
 import pandas as pd
-from pandasql import sqldf  # Allows SQL-like queries on pandas DataFrames
-
-# Function to execute SQL queries
-def run_query(query, data):
-    try:
-        return sqldf(query, locals())  # Run the SQL query on the DataFrame
-    except Exception as e:
-        return f"Error: {e}"
 
 # Streamlit app
 st.title("Excel to Queryable Database")
 
-# File upload
+# Upload Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx", "xls"])
 
 if uploaded_file:
@@ -23,16 +15,49 @@ if uploaded_file:
         st.write("Preview of your data:")
         st.dataframe(df)  # Display the DataFrame
     except Exception as e:
-        st.error(f"Error reading file: {e}")
-    
-    # SQL query input
-    query = st.text_area("Enter your SQL query:", "SELECT * FROM df LIMIT 10")
-    
-    # Execute the query
+        st.error(f"Error reading the Excel file: {e}")
+
+    # Querying Interface
+    st.header("Query Your Data")
+
+    # Select a column
+    column = st.selectbox("Select a column to filter:", df.columns)
+
+    # Input filter value
+    value = st.text_input("Enter a value to search for in the selected column:")
+
+    # Apply filter
+    if value:
+        try:
+            filtered_df = df[df[column].astype(str).str.contains(value, na=False, case=False)]
+            st.write(f"Filtered Results (Showing rows where `{column}` contains `{value}`):")
+            st.dataframe(filtered_df)  # Display the filtered data
+
+            # Option to download results
+            st.download_button(
+                label="Download Filtered Results as CSV",
+                data=filtered_df.to_csv(index=False),
+                file_name="filtered_results.csv",
+                mime="text/csv",
+            )
+        except Exception as e:
+            st.error(f"Error while filtering data: {e}")
+
+    # SQL-Like Filter (Optional)
+    st.subheader("Advanced: Enter SQL-Like Query (Pandas Syntax)")
+    query = st.text_area("Enter a query (e.g., `column_name == 'value'`):")
     if st.button("Run Query"):
-        result = run_query(query, df)
-        if isinstance(result, pd.DataFrame):
+        try:
+            query_result = df.query(query)
             st.write("Query Results:")
-            st.dataframe(result)  # Display query results
-        else:
-            st.error(result)
+            st.dataframe(query_result)
+
+            # Option to download results
+            st.download_button(
+                label="Download Query Results as CSV",
+                data=query_result.to_csv(index=False),
+                file_name="query_results.csv",
+                mime="text/csv",
+            )
+        except Exception as e:
+            st.error(f"Error executing query: {e}")
