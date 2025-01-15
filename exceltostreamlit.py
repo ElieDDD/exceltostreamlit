@@ -45,6 +45,10 @@ def query_data(filters):
         if filter_conditions:
             query += " AND " + " AND ".join(filter_conditions)
 
+        # Debugging: print query and params for troubleshooting
+        st.write(f"SQL Query: {query}")
+        st.write(f"Parameters: {params}")
+
         # Execute the query with parameters
         df = pd.read_sql_query(query, conn, params=params)
         conn.close()
