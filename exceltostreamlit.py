@@ -45,11 +45,13 @@ def query_data(filters):
         for key, value in filters.items():
             if value:
                 if key == "themes":
-                    query += f" AND {key} LIKE '%{value}%'"
+                    query += f" AND {key} LIKE ?"
                 else:
-                    query += f" AND {key} = '{value}'"
+                    query += f" AND {key} = ?"
 
-        df = pd.read_sql_query(query, conn)
+        # Execute the query with parameters
+        params = tuple(value for value in filters.values() if value)
+        df = pd.read_sql_query(query, conn, params=params)
         conn.close()
         return df
     except Exception as e:
@@ -92,7 +94,7 @@ def main():
     init_db()
 
     # Tabs for data entry, querying data, and SQL query
-    tab1, tab2, tab3 = st.tabs(["Add Data", "Query Data", "SQL Query"])
+    tab1, tab2, tab3 = st.tabs(["📥 Add Data", "🔎 Query Data", "⚙️ SQL Query"])
 
     # Add Data Tab
     with tab1:
