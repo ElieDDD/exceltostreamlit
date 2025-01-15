@@ -4,11 +4,8 @@ import sqlite3
 
 st.title("Excel File Viewer with SQLite Query Interface")
 
-# Tabs for better organization
-tab1, tab2 = st.tabs(["📄 Upload Excel File", "🛠️ SQL Query Interface"])
-
-# Tab 1: File Upload
-with tab1:
+# Expander 1: File Upload
+with st.expander("📄 Upload Excel File", expanded=True):
     st.subheader("Upload Your Excel File")
     uploaded_file = st.file_uploader("Upload your Excel file (.xlsx)", type=["xlsx"])
 
@@ -30,8 +27,8 @@ with tab1:
         except Exception as e:
             st.error(f"An error occurred while reading the file: {e}")
 
-# Tab 2: SQL Query Interface
-with tab2:
+# Expander 2: SQL Query Interface
+with st.expander("🛠️ SQL Query Interface", expanded=False):
     st.subheader("Run SQL Query on Your Data")
 
     # Check if data has been uploaded
@@ -55,4 +52,4 @@ with tab2:
             except Exception as e:
                 st.error(f"Error executing query: {e}")
     else:
-        st.warning("Please upload a file in the '📄 Upload Excel File' tab first.")
+        st.warning("Please upload a file in the '📄 Upload Excel File' section first.")
