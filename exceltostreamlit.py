@@ -76,7 +76,7 @@ def run_sql_query(query):
 
 # Main app
 def main():
-    st.title("Excel Data Uploader and Query Tool")
+    st.title("Upload data school spreadsheet and interrogate")
 
     # Tabs for data entry, querying data, and SQL query
     tab1, tab2, tab3 = st.tabs(["📥 Upload Data", "🔎 User Search", "⚙️ SQL Query"])
