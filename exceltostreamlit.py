@@ -35,6 +35,16 @@ def insert_data(university, duration, fee, themes, comments):
         st.error(f"Error inserting record: {str(e)}")
         return False
 
+# Insert multiple rows from a DataFrame into the database
+def insert_dataframe_to_db(df):
+    try:
+        conn = sqlite3.connect("university_data.db")
+        df.to_sql('university_data', conn, if_exists='append', index=False)
+        conn.close()
+        st.success("Data from Excel file uploaded successfully!")
+    except Exception as e:
+        st.error(f"Error inserting data from Excel: {str(e)}")
+
 # Query data from database
 def query_data(filters):
     try:
@@ -113,6 +123,30 @@ def main():
                     st.error("Failed to add record.")
             else:
                 st.error("Please fill in all fields.")
+
+        # Excel file upload functionality
+        st.header("Upload Excel File")
+        uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx"])
+
+        if uploaded_file is not None:
+            try:
+                # Read the uploaded Excel file
+                df = pd.read_excel(uploaded_file)
+
+                # Check the structure of the DataFrame
+                st.write("Preview of the uploaded data:")
+                st.dataframe(df.head())
+
+                # If the DataFrame has the right columns, insert it into the database
+                required_columns = ["university", "duration", "fee", "themes", "comments"]
+                if all(col in df.columns for col in required_columns):
+                    if st.button("Upload Data to Database"):
+                        insert_dataframe_to_db(df)
+                else:
+                    st.error(f"Excel file must have the following columns: {', '.join(required_columns)}")
+
+            except Exception as e:
+                st.error(f"Error reading the Excel file: {str(e)}")
 
     # Query Data Tab
     with tab2:
