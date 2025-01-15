@@ -4,12 +4,12 @@ import pandas as pd
 
 # Function to create a new SQLite database dynamically based on the Excel file structure
 def create_db_from_dataframe(df):
-    conn = sqlite3.connect("university_data.db")
+    conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
     # Create table based on the columns of the dataframe
     columns = ', '.join([f'"{col}" TEXT' for col in df.columns])
     cursor.execute(f''' 
-        CREATE TABLE IF NOT EXISTS university_data (
+        CREATE TABLE IF NOT EXISTS data_table (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             {columns}
         )
@@ -20,8 +20,8 @@ def create_db_from_dataframe(df):
 # Insert multiple rows from a DataFrame into the database
 def insert_dataframe_to_db(df):
     try:
-        conn = sqlite3.connect("university_data.db")
-        df.to_sql('university_data', conn, if_exists='append', index=False)
+        conn = sqlite3.connect("database.db")
+        df.to_sql('data_table', conn, if_exists='append', index=False)
         conn.close()
         st.success("Data from Excel file uploaded successfully!")
     except Exception as e:
@@ -30,8 +30,8 @@ def insert_dataframe_to_db(df):
 # Query data from database
 def query_data(filters):
     try:
-        conn = sqlite3.connect("university_data.db")
-        query = "SELECT * FROM university_data WHERE 1=1"
+        conn = sqlite3.connect("database.db")
+        query = "SELECT * FROM data_table WHERE 1=1"
 
         # Apply filters dynamically
         for key, value in filters.items():
@@ -50,7 +50,7 @@ def query_data(filters):
 # Run a custom SQL query
 def run_sql_query(query):
     try:
-        conn = sqlite3.connect("university_data.db")
+        conn = sqlite3.connect("database.db")
         # Return the result as a pandas DataFrame
         if query.strip().lower().startswith('select'):
             df = pd.read_sql_query(query, conn)
@@ -66,14 +66,14 @@ def run_sql_query(query):
 
 # Main app
 def main():
-    st.title("Data Schools Database")
+    st.title("Excel Data Uploader and Query Tool")
 
     # Tabs for data entry, querying data, and SQL query
-    tab1, tab2, tab3 = st.tabs(["📥 Add Data", "🔎 Query Data", "⚙️ SQL Query"])
+    tab1, tab2, tab3 = st.tabs(["📥 Upload Data", "🔎 User Search", "⚙️ SQL Query"])
 
-    # Add Data Tab
+    # Upload Data Tab
     with tab1:
-        st.header("Add Data")
+        st.header("Upload Data")
         uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx"])
 
         if uploaded_file is not None:
@@ -95,29 +95,32 @@ def main():
             except Exception as e:
                 st.error(f"Error reading the Excel file: {str(e)}")
 
-    # Query Data Tab
+    # User Search Tab (non-SQL)
     with tab2:
-        st.header("Query Data")
-        st.write("Use the filters below to search the database:")
+        st.header("Search Data")
 
-        filter_columns = pd.read_sql_query("PRAGMA table_info(university_data)", sqlite3.connect("university_data.db"))
-        filter_columns = filter_columns['name'].tolist()
+        if uploaded_file is None:
+            st.warning("Please upload a file first to enable searching.")
+        else:
+            # Fetch the columns from the uploaded data
+            filter_columns = pd.read_sql_query("PRAGMA table_info(data_table)", sqlite3.connect("database.db"))
+            filter_columns = filter_columns['name'].tolist()
 
-        filters = {}
-        for col in filter_columns:
-            filters[col] = st.text_input(f"Filter by {col}")
+            filters = {}
+            for col in filter_columns:
+                filters[col] = st.text_input(f"Filter by {col}")
 
-        if st.button("Search"):
-            result_df = query_data(filters)
-            if not result_df.empty:
-                st.dataframe(result_df)
-            else:
-                st.write("No records found.")
+            if st.button("Search"):
+                result_df = query_data(filters)
+                if not result_df.empty:
+                    st.dataframe(result_df)
+                else:
+                    st.write("No records found.")
 
-    # SQL Query Tab
+    # SQL Query Tab (for advanced users)
     with tab3:
         st.header("Run Custom SQL Query")
-        query = st.text_area("Enter SQL Query (e.g., SELECT * FROM university_data)")
+        query = st.text_area("Enter SQL Query (e.g., SELECT * FROM data_table)")
 
         if st.button("Run Query"):
             if query.strip():
