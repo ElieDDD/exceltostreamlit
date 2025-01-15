@@ -34,12 +34,18 @@ def query_data(filters):
         query = "SELECT * FROM data_table WHERE 1=1"
 
         # Apply filters dynamically
+        filter_conditions = []
+        params = []
+
         for key, value in filters.items():
-            if value:
-                query += f" AND {key} LIKE ?"
+            if value:  # If there's a value to filter by
+                filter_conditions.append(f'{key} LIKE ?')
+                params.append(f'%{value}%')  # Use LIKE with wildcards for partial matching
+
+        if filter_conditions:
+            query += " AND " + " AND ".join(filter_conditions)
 
         # Execute the query with parameters
-        params = tuple(value for value in filters.values() if value)
         df = pd.read_sql_query(query, conn, params=params)
         conn.close()
         return df
