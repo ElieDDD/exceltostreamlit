@@ -4,8 +4,11 @@ import sqlite3
 
 st.title("Excel File Viewer with SQLite Query Interface")
 
-# Expander 1: File Upload
-with st.expander("📄 Upload Excel File", expanded=True):
+# Create a navigation selectbox
+selection = st.selectbox("Choose an option", ["Upload Excel File", "SQL Query Interface"])
+
+# Tab 1: File Upload
+if selection == "Upload Excel File":
     st.subheader("Upload Your Excel File")
     uploaded_file = st.file_uploader("Upload your Excel file (.xlsx)", type=["xlsx"])
 
@@ -15,7 +18,9 @@ with st.expander("📄 Upload Excel File", expanded=True):
             df = pd.read_excel(uploaded_file, engine="openpyxl")
             st.success("File uploaded and read successfully!")
             st.write("Preview of your data:")
-            st.dataframe(df)
+            
+            # Display dataframe with adjusted width
+            st.dataframe(df, use_container_width=True)
 
             # Save DataFrame to SQLite in-memory database
             conn = sqlite3.connect(":memory:")  # In-memory database
@@ -27,8 +32,8 @@ with st.expander("📄 Upload Excel File", expanded=True):
         except Exception as e:
             st.error(f"An error occurred while reading the file: {e}")
 
-# Expander 2: SQL Query Interface
-with st.expander("🛠️ SQL Query Interface", expanded=False):
+# Tab 2: SQL Query Interface
+elif selection == "SQL Query Interface":
     st.subheader("Run SQL Query on Your Data")
 
     # Check if data has been uploaded
@@ -40,7 +45,9 @@ with st.expander("🛠️ SQL Query Interface", expanded=False):
             try:
                 result_df = pd.read_sql_query(query, conn)
                 st.write("Query Results:")
-                st.dataframe(result_df)
+                
+                # Display query results with adjusted width
+                st.dataframe(result_df, use_container_width=True)
 
                 # Option to download query results
                 st.download_button(
@@ -52,4 +59,4 @@ with st.expander("🛠️ SQL Query Interface", expanded=False):
             except Exception as e:
                 st.error(f"Error executing query: {e}")
     else:
-        st.warning("Please upload a file in the '📄 Upload Excel File' section first.")
+        st.warning("Please upload a file in the 'Upload Excel File' section first.")
